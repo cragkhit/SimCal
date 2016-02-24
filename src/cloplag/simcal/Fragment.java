@@ -19,8 +19,8 @@ public class Fragment {
 	 * @return number of non-overlapped lines, -1 is not overlap at all.
 	 */
 	public int mergeIfOverlap(Fragment f) {
-		System.out.println("This: " + this.getStartLine() + ": " + this.getEndLine());
-		System.out.println("f   : " + f.getStartLine() + ": " + f.getEndLine());
+		// System.out.println("This: " + this.getStartLine() + ": " + this.getEndLine());
+		// System.out.println("f   : " + f.getStartLine() + ": " + f.getEndLine());
 
 		// 1. f is a subset of this fragment
 		// this:  -----------------------
@@ -65,6 +65,20 @@ public class Fragment {
 //			System.out.println("Opt 5");
 			return -1;
 		}
+	}
+	
+	/**
+	 * Compare the given fragment with this one by using file name, start line, end line.
+	 * @param f the given fragment
+	 * @return TRUE if duplicate, FALSE if not.
+	 */
+	public boolean equals(Fragment f) {
+		if (this.file.equals(f.getFile()) && 
+				this.startLine == f.getStartLine() &&
+				this.endLine == f.getEndLine())
+			return true;
+		else 
+			return false;
 	}
 	
 	public String getInfo() {

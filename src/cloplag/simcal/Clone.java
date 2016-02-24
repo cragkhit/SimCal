@@ -8,9 +8,15 @@ import java.util.ArrayList;
  *
  */
 public class Clone {
+	private int id;
+	
 	public Clone() {
 		this.fragmentList = new ArrayList<Fragment>();
 	}
+
+	public int getId() { return id; }
+
+	public void setId(int id) { this.id = id; }
 
 	private ArrayList<Fragment> fragmentList;
 	

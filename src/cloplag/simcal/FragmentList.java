@@ -1,7 +1,6 @@
 package cloplag.simcal;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
 /***
  * List of fragments
@@ -16,7 +15,7 @@ public class FragmentList {
 	}
 
 	/***
-	 * Add new fragment into the list sorted by size ascending
+	 * Add new fragment into the list sorted by size descending
 	 * @param f new fragment to be added.
 	 */
 	public void add(Fragment f) {
@@ -25,17 +24,23 @@ public class FragmentList {
 		if (fList.isEmpty())
 			fList.add(f);
 		else {
-			boolean added = false;
+			boolean done = false;
 			for (int i=0; i<fList.size(); i++) {
 				Fragment frag = fList.get(i);
+				// check duplication with the existing ones.
+				// we won't re-add it if it's already there.
+				if (f.equals(frag)) {
+					done = true;
+					break;
+				}
 				if (f.getSize() > frag.getSize()) {
-					fList.add(0, f);
-					added = true;
+					fList.add(i, f);
+					done = true;
 					break; // found the place, quit
 				}
 			}
-			if (!added) 
-				fList.add(f);
+			if (!done) 
+				fList.add(f); // last one, least size
 		}
 		// print(); 
 		// System.out.println("Size = " + fList.size());
