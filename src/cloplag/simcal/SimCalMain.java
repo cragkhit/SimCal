@@ -49,11 +49,13 @@ public class SimCalMain {
 	private static Logger log;
 	private static String linecountFile;
 	private static String gcfFile;
+	private static String fileLocation;
 	// create the Options
 	private static Options options = new Options();
 	private static String mainFile;
 	// private static String logProperties;
 	private static String mode;
+	private static String calMode;
 	private static int runningCount = -1;
 	private static FragmentList fragmentList = new FragmentList();
 
@@ -63,21 +65,19 @@ public class SimCalMain {
 		gcfFile = "";
 		mainFile = "";
 		mode = "all";
-
-		// process the command line arguments
-		processCommandLine(args);
-		
 		// BasicConfigurator.configure();
 		// PropertyConfigurator.configure(logProperties);
 		log = Logger.getLogger(SimCalMain.class);
+		
 		// setting up a FileAppender dynamically...
 		SimpleLayout layout = new SimpleLayout();
 		RollingFileAppender appender;
+		
 		// use the file name to create different log each time
 		// System.out.println("mainFile = " + mainFile);
 		Path p = Paths.get(gcfFile);
 		String gcfFileName = p.getFileName().toString().replace(".xml", "");
-		String logFile = gcfFileName + ".log.sc";
+		String logFile = gcfFileName + ".sc.txt";
 		// System.out.println("Log file = " + logFile);
 		try {
 			appender = new RollingFileAppender(layout, logFile, false);
@@ -92,7 +92,11 @@ public class SimCalMain {
 		// set logging level
 		log.setLevel(Level.DEBUG);
 
-		log.debug("Running SimCal v. 0.1");
+		log.debug("Running SimCal v. 0.2");
+		
+		// process the command line arguments
+		processCommandLine(args);
+		
 		// if main file is provided, do the 1-sided comparison
 		// i.e. mainFile vs others
 		// if not, do the all comparisons
@@ -240,28 +244,46 @@ public class SimCalMain {
 				log.debug("   Start merging fragments.");
 				log.debug("==================================================================");
 				
-				int totalSize = calSumClonedLines();
-				
 				log.debug("\n\n");
 				log.debug("=============================");
 				log.debug("5. Summary");
 				log.debug("=============================");
-				log.debug("total size = " + totalSize);
-				if (totalSize == 0) { // no clone between 2 files found
-					log.debug("No clone between 2 files found.");
-					log.debug("0");
-					System.out.println("0");
-				}
-				else {
-					try {
-					log.debug("file size = " + fileHash.get(mainFile).getLines());
-					log.debug("Similarity = " + (float) (totalSize * 100) / fileHash.get(mainFile).getLines());
-					System.out.println((float) (totalSize * 100) / fileHash.get(mainFile).getLines());
-					} catch (Exception e) {
-						String err = "ERROR: error(s) in calculating similarity. "
-								+ "Check the file path and hash.";
-						log.debug(err);
-						System.err.println(err);
+				if (calMode.equals("l")) {
+					int totalSize = calSumClonedLines();
+					log.debug("total size = " + totalSize);
+					if (totalSize == 0) { // no clone between 2 files found
+						log.debug("No clone between 2 files found.");
+						log.debug("0");
+						System.out.println("0");
+					} else {
+						try {
+							log.debug("file size = " + fileHash.get(mainFile).getLines());
+							log.debug("Similarity = " + (float) (totalSize * 100) / fileHash.get(mainFile).getLines());
+							System.out.println((float) (totalSize * 100) / fileHash.get(mainFile).getLines());
+						} catch (Exception e) {
+							String err = "ERROR: error(s) in calculating similarity. Check the file path and hash.";
+							log.debug(err);
+							System.err.println(err);
+						}
+					}
+				} else if (calMode.equals("c")) {
+					int[] sizes = calSumClonedChars();
+					int totalSize = sizes[1];
+					log.debug("total chars = " + totalSize);
+					if (totalSize == 0) { // no clone between 2 files found
+						log.debug("No clone between 2 files found.");
+						log.debug("0");
+						System.out.println("0");
+					} else {
+						try {
+							log.debug("file size = " + sizes[0]);
+							log.debug("Similarity = " + (float) (totalSize * 100) / sizes[0]);
+							System.out.println((float) (totalSize * 100) / sizes[0]);
+						} catch (Exception e) {
+							String err = "ERROR: error(s) in calculating similarity. Check the file's location.";
+							log.debug(err);
+							System.err.println(err);
+						}
 					}
 				}
 			}
@@ -364,6 +386,134 @@ public class SimCalMain {
 
 		return sum;
 	}
+	
+	/***
+	 * Calculate a number of clones in term of no. of characters
+	 * Consider overlaps between existing lines
+	 * and newly added lines as well.
+	 * @param start
+	 * @param end
+	 */
+	private static int[] calSumClonedChars() {
+		int lines = 0;
+		ArrayList<Fragment> mergedList = new ArrayList<Fragment>();
+		ArrayList<Fragment> currentList = fragmentList.getList();
+
+		for (int i = 0; i < currentList.size(); i++) {
+			Fragment f1 = currentList.get(i);
+			boolean isOverlap = false;
+			log.debug("---------------------------");
+			log.debug("Frag " + i + " " + f1.getInfo());
+			if (mergedList.isEmpty())
+				mergedList.add(f1);
+			else {
+				int size = mergedList.size();
+				for (int j = 0; j < size; j++) {
+					log.debug("Round: " + j);
+					Fragment f2 = mergedList.get(j);
+					lines = f2.mergeIfOverlap(f1);
+					
+					log.debug("Non-overlapped lines: " + lines);
+					log.debug("Comparing with: " + f2.getFile() + "," + f2.getStartLine() + "," + f2.getEndLine() + "," + f2.getSize());
+					
+					// has overlaps, check near by fragments
+					if (lines != -1) {
+						isOverlap = true;
+						if (j > 0) { // if not the first one
+							// get a previous one
+							Fragment f3 = mergedList.get(j - 1);
+							// overlap to the previous one as well.
+							if (f1.getStartLine() <= f3.getEndLine()) {
+								// extend the fragment size
+								f3.setEndLine(f2.getEndLine());
+								log.debug("Extend to the previous one.");
+								// remove the current one since we already
+								// include it into the previous one.
+								mergedList.remove(f2);
+							}
+						}
+						
+						if (j < mergedList.size() - 1) { // if not the last one
+							Fragment f3 = mergedList.get(j + 1);
+							// overlap the next one as well
+							if (f1.getEndLine() >= f3.getStartLine()) {
+								// extend the fragment size
+								f2.setEndLine(f3.getEndLine());
+								log.debug("Extend to the next one.");
+								// remove the next one since we already
+								// merge it into the current one
+								mergedList.remove(f3);
+							}
+						}
+						break;
+					}
+				}
+				// no overlap, add it to the merged list
+				if (!isOverlap) {
+					boolean added = false;
+					for (int k = 0; k < mergedList.size(); k++) {
+//						log.debug("f1 start: " + f1.getStartLine()
+//								+ ", f2 start: "
+//								+ mergedList.get(k).getStartLine());
+						if (f1.getStartLine() < mergedList.get(k)
+								.getStartLine()) {
+							mergedList.add(k, f1);
+							added = true;
+							break;
+						}
+					}
+					if (!added)
+						mergedList.add(f1);
+				}
+			}
+			// calculate total cloned line counts
+			log.debug(">>>>>>>>>>>> Merged list: size = " + mergedList.size());
+			for (int l=0; l<mergedList.size(); l++) {
+				Fragment fx = mergedList.get(l);
+				log.debug(l + ":" + fx.getFile() + "," + fx.getStartLine() + "," + fx.getEndLine() + "," + fx.getSize());
+			}
+		}
+		
+		// calculate total cloned line counts
+		log.debug(">>>>>>>>>>>> Final merged list: size = " + mergedList.size());
+		
+		int[] startLines = new int[mergedList.size()];
+		int[] endLines = new int[mergedList.size()];
+		String file = "";
+		
+		for (int l=0; l<mergedList.size(); l++) {
+			Fragment fx = mergedList.get(l);
+			file = fx.getFile();
+			log.debug(l + ":" + fx.getFile() + "," + fx.getStartLine() + ","
+					+ fx.getEndLine() + "," + fx.getSize());
+			startLines[l] = fx.getStartLine();
+			endLines[l] = fx.getEndLine();
+		}
+		
+		if (mergedList.size()>0) {
+			String[] cloneLines = readFileFromLineToLine(file, startLines, endLines);
+			// System.out.println("Clone lines: " + cloneLines[1]);
+			String cloneLinesClean = "";
+			for (int i=0; i<cloneLines.length-1; i++)
+				cloneLinesClean += cloneLines[i].replaceAll("\\s+","");
+			//System.out.println("Clone lines (whitespace removed): " + cloneLinesClean);
+			
+			String wholeFile = cloneLines[cloneLines.length-1].replaceAll("\\s+","");
+			//System.out.println("Whole file (whitespace removed): " + wholeFile);
+			
+			int[] sum = new int[2];
+			sum[0] = wholeFile.length();
+			sum[1] = cloneLinesClean.length();
+			log.debug("clone size (c): " + cloneLinesClean.length());
+			log.debug("file size (c): " + wholeFile.length());
+			
+			return sum;
+		} else {
+			// no clone between files found. return something that will compute as zero
+			int[] sum = {1,0};
+			return sum;
+		}
+	}
 
 	/***
 	 * Read the line counts into srcFileArr
@@ -407,6 +557,45 @@ public class SimCalMain {
 //			SourceFile s = (SourceFile) pair.getValue();
 //			log.debug(pair.getKey() + "," + s.getLines());
 //		}
+	}
+	
+	/***
+	 * A method to read file from start to end line and return the text in that region
+	 * @param filepath the file to be read
+	 * @param startline starting line
+	 * @param endline ending line
+	 * @return the string from startline to endline
+	 */
+	private static String[] readFileFromLineToLine(String filepath, int[]	startlines, int[] endlines) {
+		BufferedReader br = null;
+		
+		String[] s = new String[startlines.length + 1]; // include the whole file too (index = last)
+		for (int i=0; i<s.length; i++) s[i] = ""; // cleaning the string
+		
+		int linecount = 0;
+		try {
+			String sCurrentLine;
+			br = new BufferedReader(new FileReader(fileLocation + "/" + filepath));
+			while ((sCurrentLine = br.readLine()) != null) {
+				linecount++;
+				// totalString keeps all the file's content
+				s[s.length-1] += sCurrentLine; 
+				for (int i=0; i<s.length-1; i++) {
+					// only get the string within the given range.
+					if (linecount>=startlines[i] && linecount<=endlines[i])
+						s[i] += sCurrentLine;
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (br != null)br.close();
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+		}
+		return s;
 	}
 
 	/***
@@ -516,6 +705,8 @@ public class SimCalMain {
 		options.addOption("g", "gcf", true, "GCF file location.");
 		options.addOption("h", "help", false, "Display help message.");
 		options.addOption("m", "main", true, "Main file to compare.");
+		options.addOption("p", "path", true, "file's location");
+		options.addOption("s", "switchmode", true, "specify the mode (l=line, c=char, w=word)");
 		options.addOption("c", "count", true, "Running count (number only)");
 
 		try {
@@ -527,6 +718,7 @@ public class SimCalMain {
 				// System.out.println("Found: " + line.getOptionValue("l"));
 				linecountFile = line.getOptionValue("l");
 			} else {
+				showHelp();
 				throw new ParseException("No linecount file provided.");
 			}
 
@@ -534,13 +726,26 @@ public class SimCalMain {
 				// log.debug("Found: " + line.getOptionValue("g"));
 				gcfFile = line.getOptionValue("g");
 			} else {
+				showHelp();
 				throw new ParseException("No GCF file provided.");
 			}
 			
 			if (line.hasOption("m")) {
 				mainFile = line.getOptionValue("m");
 			} else {
+				showHelp();
 				throw new ParseException("No main file provided. Using all comparison mode.");
+			}
+			
+			if (line.hasOption("s")) {
+				calMode = line.getOptionValue("s");
+			} else {
+				log.debug("No mode provided. Use line mode.");
+				calMode = "l";
+			}
+			
+			if (line.hasOption("p")) {
+				fileLocation = line.getOptionValue("p");
 			}
 			
 			if (line.hasOption("c")) {
