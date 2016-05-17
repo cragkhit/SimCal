@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -30,6 +31,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+
+import tokenizer.JavaTokenizer;
 
 /***
  * A class to read GCF xml file along with another file containing line numbers
@@ -285,6 +288,25 @@ public class SimCalMain {
 							System.err.println(err);
 						}
 					}
+				} else if (calMode.equals("w")) {
+					int[] sizes = calSumClonedWords();
+					int totalSize = sizes[1];
+					log.debug("total words = " + totalSize);
+					if (totalSize == 0) { // no clone between 2 files found
+						log.debug("No clone between 2 files found.");
+						log.debug("0");
+						System.out.println("0");
+					} else {
+						try {
+							log.debug("file size = " + sizes[0]);
+							log.debug("Similarity = " + (float) (totalSize * 100) / sizes[0]);
+							System.out.println((float) (totalSize * 100) / sizes[0]);
+						} catch (Exception e) {
+							String err = "ERROR: error(s) in calculating similarity. Check the file's location.";
+							log.debug(err);
+							System.err.println(err);
+						}
+					}
 				}
 			}
 		}
@@ -513,6 +535,153 @@ public class SimCalMain {
 			int[] sum = {1,0};
 			return sum;
 		}
+	}
+	
+	/***
+	 * Calculate a number of clones in term of no. of characters
+	 * Consider overlaps between existing lines
+	 * and newly added lines as well.
+	 * @param start
+	 * @param end
+	 */
+	private static int[] calSumClonedWords() {
+		int lines = 0;
+		ArrayList<Fragment> mergedList = new ArrayList<Fragment>();
+		ArrayList<Fragment> currentList = fragmentList.getList();
+
+		for (int i = 0; i < currentList.size(); i++) {
+			Fragment f1 = currentList.get(i);
+			boolean isOverlap = false;
+			log.debug("---------------------------");
+			log.debug("Frag " + i + " " + f1.getInfo());
+			if (mergedList.isEmpty())
+				mergedList.add(f1);
+			else {
+				int size = mergedList.size();
+				for (int j = 0; j < size; j++) {
+					log.debug("Round: " + j);
+					Fragment f2 = mergedList.get(j);
+					lines = f2.mergeIfOverlap(f1);
+					
+					log.debug("Non-overlapped lines: " + lines);
+					log.debug("Comparing with: " + f2.getFile() + "," + f2.getStartLine() + "," + f2.getEndLine() + "," + f2.getSize());
+					
+					// has overlaps, check near by fragments
+					if (lines != -1) {
+						isOverlap = true;
+						if (j > 0) { // if not the first one
+							// get a previous one
+							Fragment f3 = mergedList.get(j - 1);
+							// overlap to the previous one as well.
+							if (f1.getStartLine() <= f3.getEndLine()) {
+								// extend the fragment size
+								f3.setEndLine(f2.getEndLine());
+								log.debug("Extend to the previous one.");
+								// remove the current one since we already
+								// include it into the previous one.
+								mergedList.remove(f2);
+							}
+						}
+						
+						if (j < mergedList.size() - 1) { // if not the last one
+							Fragment f3 = mergedList.get(j + 1);
+							// overlap the next one as well
+							if (f1.getEndLine() >= f3.getStartLine()) {
+								// extend the fragment size
+								f2.setEndLine(f3.getEndLine());
+								log.debug("Extend to the next one.");
+								// remove the next one since we already
+								// merge it into the current one
+								mergedList.remove(f3);
+							}
+						}
+						break;
+					}
+				}
+				// no overlap, add it to the merged list
+				if (!isOverlap) {
+					boolean added = false;
+					for (int k = 0; k < mergedList.size(); k++) {
+//						log.debug("f1 start: " + f1.getStartLine()
+//								+ ", f2 start: "
+//								+ mergedList.get(k).getStartLine());
+						if (f1.getStartLine() < mergedList.get(k)
+								.getStartLine()) {
+							mergedList.add(k, f1);
+							added = true;
+							break;
+						}
+					}
+					if (!added)
+						mergedList.add(f1);
+				}
+			}
+			// calculate total cloned line counts
+			log.debug(">>>>>>>>>>>> Merged list: size = " + mergedList.size());
+			for (int l=0; l<mergedList.size(); l++) {
+				Fragment fx = mergedList.get(l);
+				log.debug(l + ":" + fx.getFile() + "," + fx.getStartLine() + "," + fx.getEndLine() + "," + fx.getSize());
+			}
+		}
+		
+		// calculate total cloned line counts
+		log.debug(">>>>>>>>>>>> Final merged list: size = " + mergedList.size());
+		
+		int[] startLines = new int[mergedList.size()];
+		int[] endLines = new int[mergedList.size()];
+		String file = "";
+		
+		for (int l=0; l<mergedList.size(); l++) {
+			Fragment fx = mergedList.get(l);
+			file = fx.getFile();
+			log.debug(l + ":" + fx.getFile() + "," + fx.getStartLine() + ","
+					+ fx.getEndLine() + "," + fx.getSize());
+			startLines[l] = fx.getStartLine();
+			endLines[l] = fx.getEndLine();
+		}
+		
+		int[] sum = new int[2];
+		JavaTokenizer tokenizer = new JavaTokenizer();
+		if (mergedList.size() > 0) {
+			String[] cloneLines = readFileFromLineToLine(file, startLines, endLines);
+			// System.out.println("Clone lines: " + cloneLines[1]);
+			ArrayList<String> cloneWords = new ArrayList<String>();
+			try {
+				for (int i = 0; i < cloneLines.length - 1; i++) {
+					StringReader sr = new StringReader(cloneLines[i]);
+					cloneWords = tokenizer.tokenize(sr);
+					// System.out.println("Clone words: " + cloneWords.toString());
+				}
+				// System.out.println("Clone lines (whitespace removed): " +
+				// cloneLinesClean);
+				// StringReader sr = new StringReader(cloneLines[cloneLines.length - 1]);
+				
+				JavaTokenizer tokenizerf = new JavaTokenizer();
+				StringReader srf = new StringReader(cloneLines[cloneLines.length - 1]);
+				ArrayList<String> wholeFile = new ArrayList<String>();
+				wholeFile = tokenizerf.tokenize(srf);
+				// System.out.println("File: " + cloneLines[cloneLines.length - 1]);
+				// System.out.println();
+				// System.out.println("File words: " + wholeFile.toString());
+				
+				sum[0] = wholeFile.size();
+				sum[1] = cloneWords.size();
+				log.debug("clone size (c): " + sum[1]);
+				log.debug("file size (c): " + sum[0]);
+				
+			} catch (Exception e) {
+				log.error(e.getMessage());
+				e.printStackTrace();
+			}
+			// System.out.println("Whole file (whitespace removed): " + wholeFile);
+		} else {
+			// no clone between files found. return something that will compute as zero
+			sum[0] = 1;
+			sum[1] = 0;
+			return sum;
+		}
+
+		return sum;
 	}
 
 	/***
