@@ -48,7 +48,7 @@ public class JavaTokenizer {
 		tokenizer.wordChars('_', '_');
 		tokenizer.eolIsSignificant(false);
 		tokenizer.ordinaryChars(0, ' ');
-		tokenizer.slashSlashComments(true);
+		tokenizer.slashSlashComments(false);
 		tokenizer.slashStarComments(true);
 		int tok;
 

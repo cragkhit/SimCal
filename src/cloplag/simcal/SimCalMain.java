@@ -40,7 +40,7 @@ import tokenizer.JavaTokenizer;
  * detection
  * 
  * @author Chaiyong Ragkhitwetsagul, UCL
- * @version 0.1
+ * @version 0.3
  * @since 2015-02-20
  */
 public class SimCalMain {
@@ -68,6 +68,10 @@ public class SimCalMain {
 		gcfFile = "";
 		mainFile = "";
 		mode = "all";
+
+		// process the command line arguments
+		processCommandLine(args);
+		
 		// BasicConfigurator.configure();
 		// PropertyConfigurator.configure(logProperties);
 		log = Logger.getLogger(SimCalMain.class);
@@ -80,7 +84,7 @@ public class SimCalMain {
 		// System.out.println("mainFile = " + mainFile);
 		Path p = Paths.get(gcfFile);
 		String gcfFileName = p.getFileName().toString().replace(".xml", "");
-		String logFile = gcfFileName + ".sc.txt";
+		String logFile = gcfFileName + ".log.txt";
 		// System.out.println("Log file = " + logFile);
 		try {
 			appender = new RollingFileAppender(layout, logFile, false);
@@ -96,9 +100,6 @@ public class SimCalMain {
 		log.setLevel(Level.DEBUG);
 
 		log.debug("Running SimCal v. 0.2");
-		
-		// process the command line arguments
-		processCommandLine(args);
 		
 		// if main file is provided, do the 1-sided comparison
 		// i.e. mainFile vs others
@@ -250,7 +251,9 @@ public class SimCalMain {
 				log.debug("\n\n");
 				log.debug("=============================");
 				log.debug("5. Summary");
+				log.debug("Mode: " + calMode);
 				log.debug("=============================");
+				
 				if (calMode.equals("l")) {
 					int totalSize = calSumClonedLines();
 					log.debug("total size = " + totalSize);
@@ -291,14 +294,14 @@ public class SimCalMain {
 				} else if (calMode.equals("w")) {
 					int[] sizes = calSumClonedWords();
 					int totalSize = sizes[1];
-					log.debug("total words = " + totalSize);
+					log.debug("total words = " + totalSize + " words");
 					if (totalSize == 0) { // no clone between 2 files found
 						log.debug("No clone between 2 files found.");
 						log.debug("0");
 						System.out.println("0");
 					} else {
 						try {
-							log.debug("file size = " + sizes[0]);
+							log.debug("file size = " + sizes[0] + " words");
 							log.debug("Similarity = " + (float) (totalSize * 100) / sizes[0]);
 							System.out.println((float) (totalSize * 100) / sizes[0]);
 						} catch (Exception e) {
@@ -660,9 +663,9 @@ public class SimCalMain {
 				StringReader srf = new StringReader(cloneLines[cloneLines.length - 1]);
 				ArrayList<String> wholeFile = new ArrayList<String>();
 				wholeFile = tokenizerf.tokenize(srf);
-				// System.out.println("File: " + cloneLines[cloneLines.length - 1]);
-				// System.out.println();
-				// System.out.println("File words: " + wholeFile.toString());
+//				 System.out.println("File: " + cloneLines[cloneLines.length - 1]);
+//				 System.out.println();
+//				 System.out.println("File words: " + wholeFile.toString());
 				
 				sum[0] = wholeFile.size();
 				sum[1] = cloneWords.size();
@@ -932,7 +935,7 @@ public class SimCalMain {
 	
 	private static void showHelp() {
 		HelpFormatter formater = new HelpFormatter();
-		formater.printHelp("SimCal", options);
+		formater.printHelp("SimCal 0.3", options);
 		System.exit(0);
 	}
 }
