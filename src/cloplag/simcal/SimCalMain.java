@@ -138,7 +138,7 @@ public class SimCalMain {
 			log.error(err);
 			System.err.println(err);
 		} catch (Exception e3) {
-			String err = "Unkown error: see below:\n " + e3.getMessage();
+			String err = "Unknown error: see below:\n " + e3.getMessage();
 			log.error(err);
 			System.err.println(err);
 			e3.printStackTrace();
@@ -318,8 +318,6 @@ public class SimCalMain {
 	/***
 	 * Calculate a number of appropriate lines to add to cloned code lines. Consider overlaps between existing lines
 	 * and newly added lines as well.
-	 * @param start
-	 * @param end
 	 */
 	private static int calSumClonedLines() {
 		int sum = 0, lines = 0;
@@ -416,8 +414,6 @@ public class SimCalMain {
 	 * Calculate a number of clones in term of no. of characters
 	 * Consider overlaps between existing lines
 	 * and newly added lines as well.
-	 * @param start
-	 * @param end
 	 */
 	private static int[] calSumClonedChars() {
 		int lines = 0;
@@ -544,8 +540,6 @@ public class SimCalMain {
 	 * Calculate a number of clones in term of no. of characters
 	 * Consider overlaps between existing lines
 	 * and newly added lines as well.
-	 * @param start
-	 * @param end
 	 */
 	private static int[] calSumClonedWords() {
 		int lines = 0;
@@ -690,7 +684,7 @@ public class SimCalMain {
 	/***
 	 * Read the line counts into srcFileArr
 	 * 
-	 * @param filepath the linecount file (.csv).
+	 * @param filePath the line count file (.csv).
 	 * @throws IOException
 	 */
 	private static void readLineCount(String filePath) throws IOException {
@@ -734,8 +728,8 @@ public class SimCalMain {
 	/***
 	 * A method to read file from start to end line and return the text in that region
 	 * @param filepath the file to be read
-	 * @param startline starting line
-	 * @param endline ending line
+	 * @param startlines starting lines
+	 * @param endlines ending lines
 	 * @return the string from startline to endline
 	 */
 	private static String[] readFileFromLineToLine(String filepath, int[]	startlines, int[] endlines) {
@@ -773,10 +767,8 @@ public class SimCalMain {
 	/***
 	 * Read the GCF file in XML format
 	 * 
-	 * @param the
-	 *            GCF file (.xml). Some part of codes copied from
-	 *            http://www.mkyong
-	 *            .com/java/how-to-read-xml-file-in-java-dom-parser/
+	 * @param f GCF file (.xml). Some part of codes copied from
+	 * http://www.mkyong.com/java/how-to-read-xml-file-in-java-dom-parser/
 	 * @throws ParserConfigurationException
 	 * @throws IOException
 	 * @throws SAXException
@@ -807,7 +799,8 @@ public class SimCalMain {
 
 				// Add only the real clones, skip ID
 				if (!clone.getNodeName().toString().equals("#text")
-						&& !clone.getNodeName().toString().equals("ID")) {
+						&& !clone.getNodeName().toString().equals("ID")
+						&& !clone.getNodeName().toString().equals("Similarity")) {
 					NodeList fragments = clone.getChildNodes();
 					log.debug("> " + j + ": Node name = " + clone.getNodeName() + ", childs = " + fragments.getLength());
 					// loop through all fragments
