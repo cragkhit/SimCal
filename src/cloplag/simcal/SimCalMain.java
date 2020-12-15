@@ -40,8 +40,9 @@ import tokenizer.JavaTokenizer;
  * detection
  * 
  * @author Chaiyong Ragkhitwetsagul, UCL
- * @version 0.3
+ * @version 0.4
  * @since 2015-02-20
+ * @LastUpdate 2020-12-12
  */
 public class SimCalMain {
 	/***
@@ -99,7 +100,7 @@ public class SimCalMain {
 		// set logging level
 		log.setLevel(Level.DEBUG);
 
-		log.debug("Running SimCal v. 0.2");
+		log.debug("Running SimCal v. 0.4");
 		
 		// if main file is provided, do the 1-sided comparison
 		// i.e. mainFile vs others
@@ -928,7 +929,7 @@ public class SimCalMain {
 	
 	private static void showHelp() {
 		HelpFormatter formater = new HelpFormatter();
-		formater.printHelp("SimCal 0.3", options);
+		formater.printHelp("SimCal 0.4", options);
 		System.exit(0);
 	}
 }
